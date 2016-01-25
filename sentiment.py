@@ -13,15 +13,17 @@ from gensim.models.doc2vec import LabeledSentence, Doc2Vec
 if len(sys.argv) != 3:
     print "python sentiment.py <path_to_data> <0|1>"
     print "0 = NLP, 1 = Doc2Vec"
-    exit(1)
-path_to_data = sys.argv[1]
-method = int(sys.argv[2])
+    # exit(1)
+# path_to_data = sys.argv[1]
+# method = int(sys.argv[2])
+path_to_data = "data/imdb/"
+method = 0
 
 
 
 def main():
     train_pos, train_neg, test_pos, test_neg = load_data(path_to_data)
-    
+
     if method == 0:
         train_pos_vec, train_neg_vec, test_pos_vec, test_neg_vec = feature_vecs_NLP(train_pos, train_neg, test_pos, test_neg)
         nb_model, lr_model = build_models_NLP(train_pos_vec, train_neg_vec)
@@ -71,9 +73,46 @@ def feature_vecs_NLP(train_pos, train_neg, test_pos, test_neg):
     """
     Returns the feature vectors for all text in the train and test datasets.
     """
-    # English stopwords from nltk
+    # English stopwords from nltk, remove stopwords
     stopwords = set(nltk.corpus.stopwords.words('english'))
+    train_pos = remove_stopwords(train_pos, stopwords)
+    train_neg = remove_stopwords(train_neg, stopwords)
+    test_pos = remove_stopwords(test_pos, stopwords)
+    test_neg = remove_stopwords(test_neg, stopwords)
     
+    train_pos_len = len(train_pos)
+    train_neg_len = len(train_neg)
+
+    word_count = {}
+
+    for sentence in train_pos:
+        for word in set(sentence):
+            try:
+                word_count[word][0] += 1
+            except:
+                word_count[word] = [1, 0]
+    for sentence in train_neg:
+        for word in set(sentence):
+            try:
+                word_count[word][1] += 1
+            except:
+                word_count[word] = [0, 1]
+
+    feature_words = {}
+    index = 0
+    for word, count in word_count.items():
+        if count[0] >= train_pos_len * 0.01 or count[1] >= train_neg_len * 0.01:
+            if count[0] == 0 or count[1] == 0:
+                feature_words[word] = index
+                index += 1
+            elif count[0] >= count[1] * 2 or count[1] >= count[0] * 2:
+                feature_words[word] = index
+                index += 1
+
+    train_pos_vec = generate_vecs(train_pos, feature_words)
+    train_neg_vec = generate_vecs(train_neg, feature_words)
+    test_pos_vec = generate_vecs(test_pos, feature_words)
+    test_neg_vec = generate_vecs(test_neg, feature_words)
     # Determine a list of words that will be used as features. 
     # This list should have the following properties:
     #   (1) Contains no stop words
@@ -88,7 +127,21 @@ def feature_vecs_NLP(train_pos, train_neg, test_pos, test_neg):
     # Return the four feature vectors
     return train_pos_vec, train_neg_vec, test_pos_vec, test_neg_vec
 
+def remove_stopwords(words_list, stopwords):
+    for i in range(len(words_list)):
+        tmp = [w for w in words_list[i] if w not in stopwords]
+        words_list[i] = tmp
+    return words_list
 
+def generate_vecs(words_list, feature_words):
+    res = [ [0] * len(feature_words.keys()) for __ in range(len(words_list))]
+    for index, sentence in enumerate(words_list):
+        for word in sentence:
+            try:
+                res[index][feature_words[word]] = 1
+            except:
+                pass
+    return res
 
 def feature_vecs_DOC(train_pos, train_neg, test_pos, test_neg):
     """
