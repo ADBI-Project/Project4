@@ -2,7 +2,7 @@ import sys
 import collections
 # import sklearn.naive_bayes
 import numpy as np
-from sklearn.naive_bayes import GaussianNB
+from sklearn.naive_bayes import BernoulliNB
 from sklearn.linear_model import LogisticRegression
 import nltk
 import random
@@ -178,7 +178,7 @@ def build_models_NLP(train_pos_vec, train_neg_vec):
     Returns a BernoulliNB and LosticRegression Model that are fit to the training data.
     """
     Y = ["pos"]*len(train_pos_vec) + ["neg"]*len(train_neg_vec)
-    gnb = GaussianNB()
+    gnb = BernoulliNB()
     nb_model = gnb.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
     lr = LogisticRegression()
     lr_model = lr.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
