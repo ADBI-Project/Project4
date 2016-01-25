@@ -1,7 +1,9 @@
 import sys
 import collections
-import sklearn.naive_bayes
-import sklearn.linear_model
+# import sklearn.naive_bayes
+import numpy as np
+from sklearn.naive_bayes import GaussianNB
+from sklearn.linear_model import LogisticRegression
 import nltk
 import random
 random.seed(0)
@@ -176,6 +178,10 @@ def build_models_NLP(train_pos_vec, train_neg_vec):
     Returns a BernoulliNB and LosticRegression Model that are fit to the training data.
     """
     Y = ["pos"]*len(train_pos_vec) + ["neg"]*len(train_neg_vec)
+    gnb = GaussianNB()
+    nb_model = gnb.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
+    lr = LogisticRegression()
+    lr_model = lr.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
 
     # Use sklearn's BernoulliNB and LogisticRegression functions to fit two models to the training data.
     # For BernoulliNB, use alpha=1.0 and binarize=None
@@ -191,7 +197,7 @@ def build_models_DOC(train_pos_vec, train_neg_vec):
     Returns a GaussianNB and LosticRegression Model that are fit to the training data.
     """
     Y = ["pos"]*len(train_pos_vec) + ["neg"]*len(train_neg_vec)
-
+    gnb = GaussianNB()
     # Use sklearn's GaussianNB and LogisticRegression functions to fit two models to the training data.
     # For LogisticRegression, pass no parameters
     # YOUR CODE HERE
@@ -206,7 +212,22 @@ def evaluate_model(model, test_pos_vec, test_neg_vec, print_confusion=False):
     """
     # Use the predict function and calculate the true/false positives and true/false negative.
     # YOUR CODE HERE
-    
+    Y = ["pos"] * len(test_pos_vec) + ["neg"] * len(test_neg_vec)
+    Y = np.array(Y)
+    test_data = np.array(test_pos_vec + test_neg_vec)
+    pred = model.predict(test_data)
+    # return pred
+    accuracy = (Y == pred).sum() * 1.0 / len(Y)
+    tp, fp, tn, fn = 0, 0, 0, 0
+    for i in range(len(Y)):
+        if Y[i] == pred[i] == 'pos':
+            tp += 1
+        if Y[i] == 'neg' and pred[i] == 'pos':
+            fp += 1
+        if Y[i] == pred[i] == 'neg':
+            tn += 1
+        if Y[i] == 'pos' and pred[i] == 'neg':
+            fn += 1
     if print_confusion:
         print "predicted:\tpos\tneg"
         print "actual:"
