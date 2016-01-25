@@ -2,7 +2,7 @@ import sys
 import collections
 # import sklearn.naive_bayes
 import numpy as np
-from sklearn.naive_bayes import BernoulliNB
+from sklearn.naive_bayes import BernoulliNB, GaussianNB
 from sklearn.linear_model import LogisticRegression
 import nltk
 import random
@@ -15,11 +15,11 @@ from gensim.models.doc2vec import LabeledSentence, Doc2Vec
 if len(sys.argv) != 3:
     print "python sentiment.py <path_to_data> <0|1>"
     print "0 = NLP, 1 = Doc2Vec"
-    # exit(1)
-# path_to_data = sys.argv[1]
-# method = int(sys.argv[2])
-path_to_data = "data/imdb/"
-method = 0
+    exit(1)
+path_to_data = sys.argv[1]
+method = int(sys.argv[2])
+# path_to_data = "data/imdb/"
+# method = 0
 
 
 
@@ -152,7 +152,10 @@ def feature_vecs_DOC(train_pos, train_neg, test_pos, test_neg):
     # Doc2Vec requires LabeledSentence objects as input.
     # Turn the datasets from lists of words to lists of LabeledSentence objects.
     # YOUR CODE HERE
-
+    labeled_train_pos = generate_labeled_list(train_pos, "TRAIN_POS_")
+    labeled_train_neg = generate_labeled_list(train_neg, "TRAIN_NEG_")
+    labeled_test_pos = generate_labeled_list(test_pos, "TEST_POS_")
+    labeled_test_neg = generate_labeled_list(test_neg, "TEST_NEG_")
     # Initialize model
     model = Doc2Vec(min_count=1, window=10, size=100, sample=1e-4, negative=5, workers=4)
     sentences = labeled_train_pos + labeled_train_neg + labeled_test_pos + labeled_test_neg
@@ -164,30 +167,42 @@ def feature_vecs_DOC(train_pos, train_neg, test_pos, test_neg):
         print "Training iteration %d" % (i)
         random.shuffle(sentences)
         model.train(sentences)
-
     # Use the docvecs function to extract the feature vectors for the training and test data
     # YOUR CODE HERE
-    
+    train_pos_vec, train_neg_vec, test_pos_vec, test_neg_vec = [], [], [], []
+    for tag in model.docvecs.doctags.keys():
+        if "TRAIN_POS_" in tag:
+            train_pos_vec.append(model.docvecs[tag])
+        elif "TRAIN_NEG_" in tag:
+            train_neg_vec.append(model.docvecs[tag])
+        elif "TEST_POS_" in tag:
+            test_pos_vec.append(model.docvecs[tag])
+        elif "TEST_NEG_" in tag:
+            test_neg_vec.append(model.docvecs[tag])
     # Return the four feature vectors
     return train_pos_vec, train_neg_vec, test_pos_vec, test_neg_vec
 
-
+def generate_labeled_list(words_list, lable):
+    res = []
+    for index, line in enumerate(words_list):
+        res.append(LabeledSentence(words = line, tags=[lable + str(index)]))
+    return res
 
 def build_models_NLP(train_pos_vec, train_neg_vec):
     """
     Returns a BernoulliNB and LosticRegression Model that are fit to the training data.
     """
     Y = ["pos"]*len(train_pos_vec) + ["neg"]*len(train_neg_vec)
+    
+    # Use sklearn's BernoulliNB and LogisticRegression functions to fit two models to the training data.
+    # For BernoulliNB, use alpha=1.0 and binarize=None
+    # For LogisticRegression, pass no parameters
+    # YOUR CODE HERE
     gnb = BernoulliNB()
     nb_model = gnb.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
     lr = LogisticRegression()
     lr_model = lr.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
 
-    # Use sklearn's BernoulliNB and LogisticRegression functions to fit two models to the training data.
-    # For BernoulliNB, use alpha=1.0 and binarize=None
-    # For LogisticRegression, pass no parameters
-    # YOUR CODE HERE
-    
     return nb_model, lr_model
 
 
@@ -197,11 +212,14 @@ def build_models_DOC(train_pos_vec, train_neg_vec):
     Returns a GaussianNB and LosticRegression Model that are fit to the training data.
     """
     Y = ["pos"]*len(train_pos_vec) + ["neg"]*len(train_neg_vec)
-    gnb = GaussianNB()
+    
     # Use sklearn's GaussianNB and LogisticRegression functions to fit two models to the training data.
     # For LogisticRegression, pass no parameters
     # YOUR CODE HERE
-    
+    gnb = GaussianNB()
+    nb_model = gnb.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
+    lr = LogisticRegression()
+    lr_model = lr.fit(np.array(train_pos_vec + train_neg_vec), np.array(Y))
     return nb_model, lr_model
 
 
@@ -216,7 +234,6 @@ def evaluate_model(model, test_pos_vec, test_neg_vec, print_confusion=False):
     Y = np.array(Y)
     test_data = np.array(test_pos_vec + test_neg_vec)
     pred = model.predict(test_data)
-    # return pred
     accuracy = (Y == pred).sum() * 1.0 / len(Y)
     tp, fp, tn, fn = 0, 0, 0, 0
     for i in range(len(Y)):
